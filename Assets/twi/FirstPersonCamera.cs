@@ -53,7 +53,7 @@ public class FirstPersonCamera : MonoBehaviour
         currentHeight = heightOffset; // 初始高度
     }
 
-    void LateUpdate()
+        void LateUpdate()
     {
         if (!target) return;
 
@@ -69,36 +69,45 @@ public class FirstPersonCamera : MonoBehaviour
         Vector3 horizontalVel = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
         bool isMoving = horizontalVel.magnitude > 0.1f;
 
-        float frequency, amplitudeY, amplitudeX;
+        float frequency = 0f, amplitudeY = 0f, amplitudeX = 0f;
 
-        if (isMoving)
+        if (_player.isGrounded) // ✅ 只有在地面上才计算晃动
         {
-            if (_player.isRunning) // 奔跑时
+            if (isMoving)
             {
-                frequency = runBobFrequency;
-                amplitudeY = runBobAmplitudeY;
-                amplitudeX = runBobAmplitudeX;
+                if (_player.isRunning) // 奔跑时
+                {
+                    frequency = runBobFrequency;
+                    amplitudeY = runBobAmplitudeY;
+                    amplitudeX = runBobAmplitudeX;
+                }
+                else // 走路
+                {
+                    frequency = moveBobFrequency;
+                    amplitudeY = moveBobAmplitudeY;
+                    amplitudeX = moveBobAmplitudeX;
+                }
             }
-            else // 走路
+            else // 静止呼吸
             {
-                frequency = moveBobFrequency;
-                amplitudeY = moveBobAmplitudeY;
-                amplitudeX = moveBobAmplitudeX;
+                frequency = idleBobFrequency;
+                amplitudeY = idleBobAmplitudeY;
+                amplitudeX = idleBobAmplitudeX;
             }
         }
-        else // 静止呼吸
+
+        // ✅ 如果不在地面上，晃动归零
+        if (_player.isGrounded)
         {
-            frequency = idleBobFrequency;
-            amplitudeY = idleBobAmplitudeY;
-            amplitudeX = idleBobAmplitudeX;
+            bobTimer += Time.deltaTime * frequency;
+            float bobY = Mathf.Sin(bobTimer) * amplitudeY;
+            float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
+            bobOffset = new Vector3(bobX, bobY, 0);
         }
-
-        bobTimer += Time.deltaTime * frequency;
-
-        float bobY = Mathf.Sin(bobTimer) * amplitudeY;
-        float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
-
-        bobOffset = new Vector3(bobX, bobY, 0);
+        else
+        {
+            bobOffset = Vector3.zero;
+        }
 
         // ---- 相机高度平滑过渡 ----
         float targetHeight = _player.isCrouching ? crouchHeightOffset : heightOffset;
@@ -106,7 +115,6 @@ public class FirstPersonCamera : MonoBehaviour
 
         Vector3 basePos = target.position + Vector3.up * currentHeight;
 
-        // ✅ 世界坐标防止放大偏移
         transform.position = basePos + target.right * bobOffset.x + Vector3.up * bobOffset.y;
 
         // 相机旋转
@@ -115,4 +123,5 @@ public class FirstPersonCamera : MonoBehaviour
         // 控制角色水平旋转
         target.rotation = Quaternion.Euler(0f, yRotation, 0f);
     }
+
 }

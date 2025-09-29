@@ -20,7 +20,7 @@ public class FirstPlayerController : MonoBehaviour
 
     [SerializeField] private float fallMultiplier = 2.5f;
 
-    private bool isGrounded;
+    public bool isGrounded;
     private Vector3 moveDir;
 
     // 状态
@@ -63,10 +63,24 @@ public class FirstPlayerController : MonoBehaviour
         // Ctrl 下蹲
         isCrouching = Input.GetKey(KeyCode.LeftControl);
 
+        // 碰撞箱调整
+        if (isCrouching)
+        {
+            Debug.Log("无产阶级");
+            _collider.height = crouchHeight;
+            _collider.center = crouchCenter;
+        }
+        else
+        {
+            Debug.Log("傻逼");
+            _collider.height = originalHeight;
+            _collider.center = originalCenter;
+        }
+
         // 动画
-        _animator.SetBool("isRun", moveDir != Vector3.zero && !isCrouching);
-        _animator.SetBool("isRunFast", isRunning);
-        _animator.SetBool("isCrouch", isCrouching);
+        // _animator.SetBool("isRun", moveDir != Vector3.zero && !isCrouching);
+        // _animator.SetBool("isRunFast", isRunning);
+        // _animator.SetBool("isCrouch", isCrouching);
 
         // 地面检测
         isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundLayer);
@@ -76,24 +90,14 @@ public class FirstPlayerController : MonoBehaviour
             _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             _animator.SetTrigger("Jump");
         }
-
-        // 碰撞箱调整
-        if (isCrouching)
-        {
-            _collider.height = crouchHeight;
-            _collider.center = crouchCenter;
-        }
-        else
-        {
-            _collider.height = originalHeight;
-            _collider.center = originalCenter;
-        }
+    Debug.Log("isGrounded = " + isGrounded);
+        
     }
 
     void FixedUpdate()
     {
         if (moveDir != Vector3.zero)
-        {
+        { 
             Quaternion targetRotation = Quaternion.LookRotation(moveDir);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
 
