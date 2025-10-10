@@ -33,13 +33,17 @@ public class FirstPlayerController : MonoBehaviour
     public float crouchHeight = 1f;
     public Vector3 crouchCenter = new Vector3(0, 0.5f, 0);
 
-    
+    [Header("音效设置")]
+    public AudioSource footstepSource;    // 播放脚步声的 AudioSource
+    public AudioClip walkClip;            // 走路脚步声
+    public AudioClip runClip;             // 奔跑脚步声
+
 
 
     void Start()
     {
         _rb = GetComponent<Rigidbody>();
-        _animator = GetComponent<Animator>();
+        //_animator = GetComponent<Animator>();
         _collider = GetComponent<CapsuleCollider>();
 
         
@@ -50,7 +54,8 @@ public class FirstPlayerController : MonoBehaviour
     }
 
     void Update()
-    {
+    {   
+        HandleFootsteps();
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
@@ -63,7 +68,7 @@ public class FirstPlayerController : MonoBehaviour
         moveDir = (camForward * vertical + camRight * horizontal).normalized;
 
         // Shift 奔跑
-        isRunning = Input.GetKey(KeyCode.LeftShift) && moveDir != Vector3.zero && !isCrouching;
+        isRunning = Input.GetKey(KeyCode.LeftShift) && moveDir != Vector3.zero && !isCrouching ;
 
         // Ctrl 下蹲
         // Ctrl 按下：进入下蹲
@@ -130,7 +135,7 @@ public class FirstPlayerController : MonoBehaviour
         if (isGrounded && Input.GetButtonDown("Jump") && !isCrouching)
         {
             _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            _animator.SetTrigger("Jump");
+            //_animator.SetTrigger("Jump");
         }
     Debug.Log("isGrounded = " + isGrounded);
         
@@ -201,4 +206,28 @@ public class FirstPlayerController : MonoBehaviour
         }
         return false;
     }
+
+    private void HandleFootsteps()
+    {
+        // 空中、静止、下蹲时不播放
+        if (!isGrounded || moveDir == Vector3.zero || isCrouching)
+        {
+            if (footstepSource.isPlaying)
+                footstepSource.Stop();
+            return;
+        }
+
+        // 判断当前是否该播放哪种音效
+        AudioClip targetClip = isRunning ? runClip : walkClip;
+
+        // 如果当前没在播放对应音效，则切换播放
+        if (!footstepSource.isPlaying || footstepSource.clip != targetClip)
+        {
+            footstepSource.clip = targetClip;
+            footstepSource.loop = true; // 持续播放
+            footstepSource.Play();
+            Debug.Log("ddd");
+        }
+    }
+
 }
