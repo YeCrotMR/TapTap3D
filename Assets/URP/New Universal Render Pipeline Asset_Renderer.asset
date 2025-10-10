@@ -83,6 +83,20 @@ MonoBehaviour:
   m_CopyDepthMode: 1
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1
+--- !u!114 &4867570577562193353
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80e6bce2032a36c4cab37957b4a50f25, type: 3}
+  m_Name: ScreenSpaceReflectionFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings: {ssrMaterial: {fileID: 2100000, guid: c0454824374fd524f9388aabab3b1492, type: 2}}
 --- !u!114 &7161529311175837450
 MonoBehaviour:
   m_ObjectHideFlags: 0
