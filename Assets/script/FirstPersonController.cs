@@ -1,196 +1,239 @@
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class FirstPlayerController : MonoBehaviour
 {
-    private Rigidbody _rb;
-    private Animator _animator;
-    private CapsuleCollider _collider;
+    // Components
+    private CharacterController controller;
+    public AudioSource footstepSource;
+    public AudioClip walkClip;
+    public AudioClip runClip;
 
+    // Movement params
     [Header("移动参数")]
-    public float walkSpeed = 5f;   // 走路
-    public float runSpeed = 9f;    // 奔跑
-    public float crouchSpeed = 2.5f; // 下蹲速度
-    public float rotationSpeed = 5f;
+    public float walkSpeed = 5f;
+    public float runSpeed = 9f;
+    public float crouchSpeed = 2.5f;
+    public float rotationSpeed = 10f;
 
-    [Header("跳跃参数")]
-    public float jumpForce = 5f;
-    public LayerMask groundLayer;
-    public Transform groundCheck;
-    public float groundCheckRadius = 0.2f;
+    [Header("跳跃/重力")]
+    public float jumpHeight = 1.2f;
+    public float gravity = -9.81f;
+    public float fallMultiplier = 2.5f;
+    public float groundedGravity = -2f; // 用于保持贴地状态
 
-    [SerializeField] private float fallMultiplier = 2.5f;
+    [Header("CharacterController 设置")]
+    public float slopeLimit = 50f;   // 允许的最大坡度（角度）
+    public float stepOffset = 0.3f;  // 小台阶可跨越高度
 
-    public bool isGrounded;
-    private Vector3 moveDir;
-
-    // 状态
-    [HideInInspector] public bool isRunning = false;  
-    [HideInInspector] public bool isCrouching = false;
-
-    // 碰撞体原始参数
+    // Crouch
+    [Header("下蹲设置")]
+    public float crouchHeight = 1f;
+    public Vector3 crouchCenter = new Vector3(0f, 0.5f, 0f);
     private float originalHeight;
     private Vector3 originalCenter;
-    public float crouchHeight = 1f;
-    public Vector3 crouchCenter = new Vector3(0, 0.5f, 0);
 
-    [Header("音效设置")]
-    public AudioSource footstepSource;    // 播放脚步声的 AudioSource
-    public AudioClip walkClip;            // 走路脚步声
-    public AudioClip runClip;             // 奔跑脚步声
-
-
+    // state
+    [HideInInspector] public bool isRunning = false;
+    [HideInInspector] public bool isCrouching = false;
+    private Vector3 inputDir;
+    private Vector3 velocity; // 包含垂直分量
+    public bool isGrounded;
 
     void Start()
     {
-        _rb = GetComponent<Rigidbody>();
-        //_animator = GetComponent<Animator>();
-        _collider = GetComponent<CapsuleCollider>();
+        controller = GetComponent<CharacterController>();
 
-        
+        // 保存原始 collider 参数
+        originalHeight = controller.height;
+        originalCenter = controller.center;
 
-        // 保存原始碰撞箱参数
-        originalHeight = _collider.height;
-        originalCenter = _collider.center;
+        // 设置 controller 参数
+        controller.slopeLimit = slopeLimit;
+        controller.stepOffset = stepOffset;
+        controller.skinWidth = 0.08f;
     }
 
     void Update()
-    {   
+    {
+        HandleInput();
+        HandleCrouch();
         HandleFootsteps();
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-
-        // 摄像机方向
-        Vector3 camForward = Camera.main.transform.forward;
-        camForward.y = 0f; camForward.Normalize();
-        Vector3 camRight = Camera.main.transform.right;
-        camRight.y = 0f; camRight.Normalize();
-
-        moveDir = (camForward * vertical + camRight * horizontal).normalized;
-
-        // Shift 奔跑
-        isRunning = Input.GetKey(KeyCode.LeftShift) && moveDir != Vector3.zero && !isCrouching ;
-
-        // Ctrl 下蹲
-        // Ctrl 按下：进入下蹲
         if (Input.GetKey(KeyCode.LeftControl))
-        {
-            isCrouching = true;
-        }
-        else
-        {
-            // 松开 Ctrl 的时候才考虑起身
-            if (isCrouching)
-            {
-                // 头顶有障碍，就继续保持下蹲
-                if (RaycastUpCheckCrouch(transform.position, 10f) 
-                || RaycastUpCheckCrouch(transform.position + new Vector3(1f, 0, 0), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(-1f, 0, 0), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(0, 0, 1f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(0, 0, -1f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(0, 0, -1f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(-0.71f, 0, -0.71f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(0.71f, 0, -0.71f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(-0.71f, 0, 0.71f), 10f)
-                || RaycastUpCheckCrouch(transform.position + new Vector3(0.71f, 0, 0.71f), 10f)
-                )
                 {
                     isCrouching = true;
                 }
                 else
                 {
-                    // 没障碍就起身
-                    isCrouching = false;
+                    // 松开 Ctrl 的时候才考虑起身
+                    if (isCrouching)
+                    {
+                        // 头顶有障碍，就继续保持下蹲
+                        if (RaycastUpCheckCrouch(transform.position, 10f) 
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(1f, 0, 0), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(-1f, 0, 0), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(0, 0, 1f), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(0, 0, -1f), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(-0.71f, 0, -0.71f), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(0.71f, 0, -0.71f), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(-0.71f, 0, 0.71f), 10f)
+                        || RaycastUpCheckCrouch(transform.position + new Vector3(0.71f, 0, 0.71f), 10f)
+                        )
+                        {
+                            Debug.Log("ttt");
+                            isCrouching = true;
+                        }
+                        else
+                        {
+                            // 没障碍就起身
+                            isCrouching = false;
+                        }
+                    }
+                }
+    }
+
+    private void HandleInput()
+    {
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
+
+        // 基于摄像机方向移动
+        Vector3 camForward = Camera.main.transform.forward;
+        camForward.y = 0f;
+        camForward.Normalize();
+        Vector3 camRight = Camera.main.transform.right;
+        camRight.y = 0f;
+        camRight.Normalize();
+
+        inputDir = (camForward * vertical + camRight * horizontal).normalized;
+
+        isRunning = Input.GetKey(KeyCode.LeftShift) && inputDir != Vector3.zero && !isCrouching;
+        Debug.Log("上面有东西：" + RaycastUpCheckCrouch(transform.position, 10f));
+
+        // 跳跃（只在落地且非下蹲时）
+        isGrounded = controller.isGrounded;
+        if (isGrounded && velocity.y < 0f)
+        {
+            // 轻微向下保持贴地
+            velocity.y = groundedGravity;
+        }
+
+        if (isGrounded && Input.GetButtonDown("Jump") && !isCrouching)
+        {
+            // v = sqrt(2 * g * h)
+            velocity.y = Mathf.Sqrt(-2f * gravity * jumpHeight);
+        }
+
+        // 旋转朝向和水平移动在 Fixed style (这里用 Update 做移动，便于更灵活)
+        HandleMove();
+    }
+
+    private void HandleMove()
+    {
+        float currentSpeed = walkSpeed;
+        if (isCrouching) currentSpeed = crouchSpeed;
+        else if (isRunning) currentSpeed = runSpeed;
+
+        // 平滑旋转（仅在有输入时）
+        if (inputDir != Vector3.zero)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(inputDir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
+        }
+
+        // 当在可行走坡面并且有输入时，允许正常沿 inputDir 移动
+        Vector3 move = inputDir * currentSpeed;
+
+        // 重力应用（手动）
+        if (!isGrounded)
+        {
+            // 更自然的下落：在下落时加速
+            velocity.y += gravity * (fallMultiplier) * Time.deltaTime;
+        }
+        else
+        {
+            // 在地面时仅保留小向下速度，避免被判为“空中”
+            // (jump 时 velocity.y 已由上方设置)
+            // velocity.y = groundedGravity; // 已在上面处理
+        }
+
+        // 把水平与垂直合并后交给 CharacterController.Move
+        Vector3 finalMove = move + Vector3.up * velocity.y;
+        controller.Move(finalMove * Time.deltaTime);
+
+        // 防止 CharacterController 在极陡坡上产生滑动：
+        // 当无输入且站在坡上时，手动抵消由 CharacterController 产生的滑动（通常不会大）
+        if (inputDir == Vector3.zero && isGrounded)
+        {
+            // 检测坡面法线
+            if (Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, out RaycastHit hit, 1.5f))
+            {
+                float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
+                if (slopeAngle <= controller.slopeLimit)
+                {
+                    // 在允许的坡度范围内且没有输入时，不让产生任何水平位移
+                    // CharacterController.Move 可能会造成微小穿透式位移，直接修正：
+                    Vector3 horizontalVel = new Vector3(controller.velocity.x, 0f, controller.velocity.z);
+                    if (horizontalVel.magnitude > 0.01f)
+                    {
+                        // 把其清零（仅修正微小抖动，不影响主动移动）
+                        controller.Move(-horizontalVel * Time.deltaTime);
+                    }
                 }
             }
         }
 
-        
-
-
-        if (CanStandUp())
-    {
-        Debug.Log("上方有带Crouch标签的物体！");
+        // 当着地并且不是跳跃状态，确保 velocity.y 不累积过大正值
+        if (isGrounded && velocity.y > 0f && !Input.GetButton("Jump"))
+            velocity.y = groundedGravity;
     }
 
-        // 碰撞箱调整
+    private void HandleCrouch()
+    {
         if (isCrouching)
         {
-            _collider.height = crouchHeight;
-            _collider.center = crouchCenter;
+            controller.height = Mathf.Lerp(controller.height, crouchHeight, Time.deltaTime * 10f);
+            controller.center = Vector3.Lerp(controller.center, crouchCenter, Time.deltaTime * 10f);
         }
         else
         {
-            _collider.height = originalHeight;
-            _collider.center = originalCenter;
+            controller.height = Mathf.Lerp(controller.height, originalHeight, Time.deltaTime * 10f);
+            controller.center = Vector3.Lerp(controller.center, originalCenter, Time.deltaTime * 10f);
         }
-
-        // 动画
-        // _animator.SetBool("isRun", moveDir != Vector3.zero && !isCrouching);
-        // _animator.SetBool("isRunFast", isRunning);
-        // _animator.SetBool("isCrouch", isCrouching);
-
-        // 地面检测
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundLayer);
-
-        if (isGrounded && Input.GetButtonDown("Jump") && !isCrouching)
-        {
-            _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            //_animator.SetTrigger("Jump");
-        }
-    Debug.Log("isGrounded = " + isGrounded);
-        
     }
 
-    void FixedUpdate()
+    private void HandleFootsteps()
     {
-        if (moveDir != Vector3.zero)
-        { 
-            Quaternion targetRotation = Quaternion.LookRotation(moveDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
+        if (footstepSource == null) return;
 
-            float currentSpeed;
-            if (isCrouching)
-                currentSpeed = crouchSpeed;
-            else if (isRunning)
-                currentSpeed = runSpeed;
-            else
-                currentSpeed = walkSpeed;
-
-            Vector3 targetVelocity = moveDir * currentSpeed;
-            targetVelocity.y = _rb.velocity.y;
-            _rb.velocity = targetVelocity;
-        }
-        else
+        // 不在地面、静止或下蹲时停止
+        if (!isGrounded || inputDir == Vector3.zero || isCrouching)
         {
-            _rb.velocity = new Vector3(0, _rb.velocity.y, 0);
+            if (footstepSource.isPlaying) footstepSource.Stop();
+            return;
         }
 
-        if (_rb.velocity.y < 0)
+        AudioClip targetClip = isRunning ? runClip : walkClip;
+        if (!footstepSource.isPlaying || footstepSource.clip != targetClip)
         {
-            _rb.velocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
+            footstepSource.clip = targetClip;
+            footstepSource.loop = true;
+            footstepSource.Play();
         }
     }
 
     private bool CanStandUp()
-{
-    float radius = _collider.radius;
-    float standHeight = originalHeight;
-    Vector3 standCenter = originalCenter;
-
-    // 世界坐标中心
-    Vector3 worldCenter = transform.TransformPoint(standCenter);
-
-    // 胶囊底端和顶端
-    Vector3 up = transform.up;
-    Vector3 point1 = worldCenter + up * (standHeight / 2f - radius); // 顶端
-    Vector3 point2 = worldCenter - up * (standHeight / 2f - radius); // 底端
-
-    // 只检测头顶空间，不加 extraCheck，避免误判
-    bool blocked = Physics.CheckCapsule(point1, point2, radius, groundLayer, QueryTriggerInteraction.Ignore);
-
-    // 返回 true = 没障碍物，可以站立
-    return !blocked;
-}
+    {
+        // 用 CharacterController 的 center/height 做判断：从头顶发射小球检查
+        float radius = controller.radius;
+        float standHeight = originalHeight;
+        Vector3 worldCenter = transform.TransformPoint(originalCenter);
+        Vector3 up = transform.up;
+        // 顶部位置
+        Vector3 top = worldCenter + up * (standHeight / 2f);
+        // 检查从胸部到头顶上方是否有阻挡
+        return !Physics.SphereCast(transform.position, radius, Vector3.up, out _, standHeight - controller.radius, ~0, QueryTriggerInteraction.Ignore);
+    }
 
     public static bool RaycastUpCheckCrouch(Vector3 origin, float distance)
     {
@@ -206,28 +249,5 @@ public class FirstPlayerController : MonoBehaviour
         }
         return false;
     }
-
-    private void HandleFootsteps()
-    {
-        // 空中、静止、下蹲时不播放
-        if (!isGrounded || moveDir == Vector3.zero || isCrouching)
-        {
-            if (footstepSource.isPlaying)
-                footstepSource.Stop();
-            return;
-        }
-
-        // 判断当前是否该播放哪种音效
-        AudioClip targetClip = isRunning ? runClip : walkClip;
-
-        // 如果当前没在播放对应音效，则切换播放
-        if (!footstepSource.isPlaying || footstepSource.clip != targetClip)
-        {
-            footstepSource.clip = targetClip;
-            footstepSource.loop = true; // 持续播放
-            footstepSource.Play();
-            Debug.Log("ddd");
-        }
-    }
-
+    
 }

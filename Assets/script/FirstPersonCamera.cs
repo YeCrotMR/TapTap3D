@@ -54,74 +54,79 @@ public class FirstPersonCamera : MonoBehaviour
     }
 
         void LateUpdate()
+{
+    if (!target) return;
+
+    // 鼠标输入
+    float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+    float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+    yRotation += mouseX;
+    xRotation -= mouseY;
+    xRotation = Mathf.Clamp(xRotation, yMinLimit, yMaxLimit);
+
+    // ---- 判断是否移动 ----
+    Vector3 horizontalVel = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
+    bool hasInput = Mathf.Abs(Input.GetAxis("Horizontal")) > 0.05f || Mathf.Abs(Input.GetAxis("Vertical")) > 0.05f;
+    bool isMoving = hasInput && horizontalVel.magnitude > 0.1f && _player.isGrounded;
+
+    float frequency = 0f;
+    float amplitudeY = 0f;
+    float amplitudeX = 0f;
+
+    if (_player.isGrounded)
     {
-        if (!target) return;
-
-        // 鼠标输入
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
-        yRotation += mouseX;
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, yMinLimit, yMaxLimit);
-
-        // ---- 晃动计算 ----
-        Vector3 horizontalVel = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
-        bool isMoving = horizontalVel.magnitude > 0.1f;
-
-        float frequency = 0f, amplitudeY = 0f, amplitudeX = 0f;
-
-        if (_player.isGrounded) // ✅ 只有在地面上才计算晃动
+        if (isMoving)
         {
-            if (isMoving)
+            if (_player.isRunning)
             {
-                if (_player.isRunning) // 奔跑时
-                {
-                    frequency = runBobFrequency;
-                    amplitudeY = runBobAmplitudeY;
-                    amplitudeX = runBobAmplitudeX;
-                }
-                else // 走路
-                {
-                    frequency = moveBobFrequency;
-                    amplitudeY = moveBobAmplitudeY;
-                    amplitudeX = moveBobAmplitudeX;
-                }
+                frequency = runBobFrequency;
+                amplitudeY = runBobAmplitudeY;
+                amplitudeX = runBobAmplitudeX;
             }
-            else // 静止呼吸
+            else
             {
-                frequency = idleBobFrequency;
-                amplitudeY = idleBobAmplitudeY;
-                amplitudeX = idleBobAmplitudeX;
+                frequency = moveBobFrequency;
+                amplitudeY = moveBobAmplitudeY;
+                amplitudeX = moveBobAmplitudeX;
             }
-        }
-
-        // ✅ 如果不在地面上，晃动归零
-        if (_player.isGrounded)
-        {
-            bobTimer += Time.deltaTime * frequency;
-            float bobY = Mathf.Sin(bobTimer) * amplitudeY;
-            float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
-            bobOffset = new Vector3(bobX, bobY, 0);
         }
         else
         {
-            bobOffset = Vector3.zero;
+            // ✅ 静止时（无输入）切换为呼吸晃动
+            frequency = idleBobFrequency;
+            amplitudeY = idleBobAmplitudeY;
+            amplitudeX = idleBobAmplitudeX;
         }
-
-        // ---- 相机高度平滑过渡 ----
-        float targetHeight = _player.isCrouching ? crouchHeightOffset : heightOffset;
-        currentHeight = Mathf.Lerp(currentHeight, targetHeight, Time.deltaTime * crouchLerpSpeed);
-
-        Vector3 basePos = target.position + Vector3.up * currentHeight;
-
-        transform.position = basePos + target.right * bobOffset.x + Vector3.up * bobOffset.y;
-
-        // 相机旋转
-        transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
-
-        // 控制角色水平旋转
-        target.rotation = Quaternion.Euler(0f, yRotation, 0f);
     }
+
+    // ✅ 非地面状态不晃动
+    if (_player.isGrounded)
+    {
+        bobTimer += Time.deltaTime * frequency;
+        float bobY = Mathf.Sin(bobTimer) * amplitudeY;
+        float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
+        bobOffset = new Vector3(bobX, bobY, 0);
+    }
+    else
+    {
+        bobOffset = Vector3.zero;
+    }
+
+    // ---- 相机高度平滑过渡 ----
+    float targetHeight = _player.isCrouching ? crouchHeightOffset : heightOffset;
+    currentHeight = Mathf.Lerp(currentHeight, targetHeight, Time.deltaTime * crouchLerpSpeed);
+
+    Vector3 basePos = target.position + Vector3.up * currentHeight;
+
+    transform.position = basePos + target.right * bobOffset.x + Vector3.up * bobOffset.y;
+
+    // 相机旋转
+    transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
+
+    // 控制角色水平旋转
+    target.rotation = Quaternion.Euler(0f, yRotation, 0f);
+}
+
 
 }
