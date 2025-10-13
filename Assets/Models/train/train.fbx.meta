@@ -29,6 +29,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: "\u6905\u5B50"
     second: {fileID: 2100000, guid: 294cd6066ae8f5c469b78123c85bb393, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "\u706F.001"
+    second: {fileID: 2100000, guid: 05653396ab3a984488074b58b0fdac27, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "\u767D"
+    second: {fileID: 2100000, guid: 66f2c1fbd0d4bdc438895d30d2c7fc98, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
