@@ -7,8 +7,8 @@ public class FirstPersonCamera : MonoBehaviour
 
     [Header("相机高度")]
     public float heightOffset = 1.7f; 
-    public float crouchHeightOffset = 1.0f; // 下蹲高度
-    public float crouchLerpSpeed = 8f;      // 平滑过渡速度
+    public float crouchHeightOffset = 1.0f; 
+    public float crouchLerpSpeed = 8f;      
 
     public float yMinLimit = -80f;    
     public float yMaxLimit = 80f;     
@@ -36,7 +36,11 @@ public class FirstPersonCamera : MonoBehaviour
     private Rigidbody _rb;            
     private FirstPlayerController _player; 
 
-    private float currentHeight;  // 平滑过渡中的实际高度
+    private float currentHeight;  
+
+    // === 新增：锁定目标逻辑 ===
+    private bool isLockedOn = false;          // 是否锁定目标
+    private Transform lockTarget;             // 被锁定的目标
 
     void Start()
     {
@@ -50,83 +54,105 @@ public class FirstPersonCamera : MonoBehaviour
         _rb = target.GetComponent<Rigidbody>();
         _player = target.GetComponent<FirstPlayerController>();
 
-        currentHeight = heightOffset; // 初始高度
+        currentHeight = heightOffset;
     }
 
-        void LateUpdate()
-{
-    if (!target) return;
-
-    // 鼠标输入
-    float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-    float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
-    yRotation += mouseX;
-    xRotation -= mouseY;
-    xRotation = Mathf.Clamp(xRotation, yMinLimit, yMaxLimit);
-
-    // ---- 判断是否移动 ----
-    Vector3 horizontalVel = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
-    bool hasInput = Mathf.Abs(Input.GetAxis("Horizontal")) > 0.05f || Mathf.Abs(Input.GetAxis("Vertical")) > 0.05f;
-    bool isMoving = hasInput && horizontalVel.magnitude > 0.1f && _player.isGrounded;
-
-    float frequency = 0f;
-    float amplitudeY = 0f;
-    float amplitudeX = 0f;
-
-    if (_player.isGrounded)
+    void LateUpdate()
     {
-        if (isMoving)
+        if (!target) return;
+
+        // === 锁定模式下，相机自动朝向目标，不接受鼠标输入 ===
+        if (isLockedOn && lockTarget != null)
         {
-            if (_player.isRunning)
+            Vector3 direction = (lockTarget.position - transform.position).normalized;
+            Quaternion lookRotation = Quaternion.LookRotation(direction);
+            transform.rotation = Quaternion.Lerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
+            return; // 跳过鼠标控制
+        }
+
+        // === 鼠标输入 ===
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+        yRotation += mouseX;
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, yMinLimit, yMaxLimit);
+
+        // ---- 判断是否移动 ----
+        Vector3 horizontalVel = new Vector3(_rb.velocity.x, 0, _rb.velocity.z);
+        bool hasInput = Mathf.Abs(Input.GetAxis("Horizontal")) > 0.05f || Mathf.Abs(Input.GetAxis("Vertical")) > 0.05f;
+        bool isMoving = hasInput && horizontalVel.magnitude > 0.1f && _player.isGrounded;
+
+        float frequency = 0f;
+        float amplitudeY = 0f;
+        float amplitudeX = 0f;
+
+        if (_player.isGrounded)
+        {
+            if (isMoving)
             {
-                frequency = runBobFrequency;
-                amplitudeY = runBobAmplitudeY;
-                amplitudeX = runBobAmplitudeX;
+                if (_player.isRunning)
+                {
+                    frequency = runBobFrequency;
+                    amplitudeY = runBobAmplitudeY;
+                    amplitudeX = runBobAmplitudeX;
+                }
+                else
+                {
+                    frequency = moveBobFrequency;
+                    amplitudeY = moveBobAmplitudeY;
+                    amplitudeX = moveBobAmplitudeX;
+                }
             }
             else
             {
-                frequency = moveBobFrequency;
-                amplitudeY = moveBobAmplitudeY;
-                amplitudeX = moveBobAmplitudeX;
+                frequency = idleBobFrequency;
+                amplitudeY = idleBobAmplitudeY;
+                amplitudeX = idleBobAmplitudeX;
             }
+        }
+
+        if (_player.isGrounded)
+        {
+            bobTimer += Time.deltaTime * frequency;
+            float bobY = Mathf.Sin(bobTimer) * amplitudeY;
+            float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
+            bobOffset = new Vector3(bobX, bobY, 0);
         }
         else
         {
-            // ✅ 静止时（无输入）切换为呼吸晃动
-            frequency = idleBobFrequency;
-            amplitudeY = idleBobAmplitudeY;
-            amplitudeX = idleBobAmplitudeX;
+            bobOffset = Vector3.zero;
         }
+
+        // ---- 相机高度平滑过渡 ----
+        float targetHeight = _player.isCrouching ? crouchHeightOffset : heightOffset;
+        currentHeight = Mathf.Lerp(currentHeight, targetHeight, Time.deltaTime * crouchLerpSpeed);
+
+        Vector3 basePos = target.position + Vector3.up * currentHeight;
+        transform.position = basePos + target.right * bobOffset.x + Vector3.up * bobOffset.y;
+
+        // 相机旋转
+        transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
+        target.rotation = Quaternion.Euler(0f, yRotation, 0f);
     }
 
-    // ✅ 非地面状态不晃动
-    if (_player.isGrounded)
+    // === 新增函数 ===
+    /// <summary>
+    /// 锁定相机朝向某个物体（自动注视）
+    /// </summary>
+    public void LockOn(Transform targetObj)
     {
-        bobTimer += Time.deltaTime * frequency;
-        float bobY = Mathf.Sin(bobTimer) * amplitudeY;
-        float bobX = Mathf.Sin(bobTimer * 2f) * amplitudeX;
-        bobOffset = new Vector3(bobX, bobY, 0);
+        if (targetObj == null) return;
+        isLockedOn = true;
+        lockTarget = targetObj;
     }
-    else
+
+    /// <summary>
+    /// 解锁相机，让玩家重新控制
+    /// </summary>
+    public void Unlock()
     {
-        bobOffset = Vector3.zero;
+        isLockedOn = false;
+        lockTarget = null;
     }
-
-    // ---- 相机高度平滑过渡 ----
-    float targetHeight = _player.isCrouching ? crouchHeightOffset : heightOffset;
-    currentHeight = Mathf.Lerp(currentHeight, targetHeight, Time.deltaTime * crouchLerpSpeed);
-
-    Vector3 basePos = target.position + Vector3.up * currentHeight;
-
-    transform.position = basePos + target.right * bobOffset.x + Vector3.up * bobOffset.y;
-
-    // 相机旋转
-    transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
-
-    // 控制角色水平旋转
-    target.rotation = Quaternion.Euler(0f, yRotation, 0f);
-}
-
-
 }

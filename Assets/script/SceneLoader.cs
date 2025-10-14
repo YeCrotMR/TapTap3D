@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public static class SceneLoader
+public class SceneLoader : MonoBehaviour
 {
     /// <summary>
     /// 根据场景序号切换场景
