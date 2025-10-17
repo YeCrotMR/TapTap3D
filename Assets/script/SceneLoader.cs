@@ -3,10 +3,9 @@ using UnityEngine.SceneManagement;
 
 public class SceneLoader : MonoBehaviour
 {
-    /// <summary>
-    /// 根据场景序号切换场景
-    /// </summary>
-    /// <param name="sceneIndex">场景在Build Settings中的序号</param>
+    
+
+    
     public static void LoadSceneByIndex(int sceneIndex)
     {
         // 检查是否序号有效

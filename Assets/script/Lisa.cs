@@ -7,6 +7,7 @@ public class Lisa : MonoBehaviour
     [Header("玩家引用")]
     public Transform player;             // 玩家Transform
     public FirstPersonCamera playerCamera;
+    public GameObject lookat;
 
     [Header("参数设置")]
     public float showPlayerXThreshold = 5f;   // 玩家X坐标阈值
@@ -17,13 +18,14 @@ public class Lisa : MonoBehaviour
     private bool isHidden = false;            // 当前物体是否隐藏
     private bool isChasing = false;           // 是否开始追踪
 
-    private Renderer objRenderer;
-    private Collider objCollider;
+    private Renderer[] allRenderers;          // ✅ 自身及所有子级Renderer
+    private Collider[] allColliders;          // ✅ 自身及所有子级Collider
 
     private void Start()
     {
-        objRenderer = GetComponent<Renderer>();
-        objCollider = GetComponent<Collider>();
+        // ✅ 获取自己及所有子物体上的 Renderer 和 Collider
+        allRenderers = GetComponentsInChildren<Renderer>(true);
+        allColliders = GetComponentsInChildren<Collider>(true);
     }
 
     private void Update()
@@ -41,32 +43,47 @@ public class Lisa : MonoBehaviour
         }
 
         // ✅ 开始追踪逻辑
-        if (isChasing)
-        {
-            float playerY = player.eulerAngles.y;
-            if (playerY > 180f) playerY -= 360f;  // 转换为 -180 ~ 180 区间
+        // ✅ 开始追踪逻辑
+if (isChasing)
+{
+    float playerY = player.eulerAngles.y;
+    if (playerY > 180f) playerY -= 360f;  // 转换为 -180 ~ 180 区间
 
-            float currentSpeed = chaseSpeed;
-            if (playerY >= -180f && playerY <= 0f)
-                currentSpeed *= chaseSpeedMultiplier;
+    float currentSpeed = chaseSpeed;
+    if (playerY >= -180f && playerY <= 0f)
+        currentSpeed *= chaseSpeedMultiplier;
 
-            // 向玩家移动
-            Vector3 direction = (player.position - transform.position).normalized;
-            transform.position += direction * currentSpeed * Time.deltaTime;
+    // 向玩家移动
+    Vector3 direction = (player.position - transform.position).normalized;
+    Vector3 move = direction * currentSpeed * Time.deltaTime;
 
-            // 面向玩家
-            transform.LookAt(player);
+    // ✅ 保持在地面高度
+    float groundY = transform.position.y;
+    transform.position += move;
+    transform.position = new Vector3(transform.position.x, groundY, transform.position.z);
 
-            // ✅ 检测是否追上
-            float distance = Vector3.Distance(transform.position, player.position);
-            if (distance <= chaseDistance)
-            {
-                isChasing = false;  // ✅ 停止追踪
-                transform.LookAt(player); // 保持朝向玩家
-                playerCamera.LockOn(transform);
-                StartCoroutine(DelayLoadScene());
-            }
-        }
+    // ✅ 只在Y轴旋转朝向玩家（防止抬头低头）
+    Vector3 lookPos = player.position - transform.position;
+    lookPos.y = 0;
+    transform.rotation = Quaternion.LookRotation(lookPos);
+
+    // ✅ 检测是否追上
+    float distance = Vector3.Distance(transform.position, player.position);
+    if (distance <= chaseDistance)
+    {
+        isChasing = false;  // 停止追踪
+
+        // ✅ 保持Y轴朝向玩家
+        lookPos = player.position - transform.position;
+        lookPos.y = 0;
+        if (lookPos.sqrMagnitude > 0.001f)
+            transform.rotation = Quaternion.LookRotation(lookPos);
+
+        playerCamera.LockOn(lookat.transform);
+        StartCoroutine(DelayLoadScene());
+    }
+}
+
     }
 
     private IEnumerator DelayLoadScene()
@@ -86,17 +103,35 @@ public class Lisa : MonoBehaviour
         }
     }
 
+    // ✅ 隐藏自身和所有子级的Renderer与Collider
     private void HideObject()
     {
         isHidden = true;
-        objRenderer.enabled = false;
-        objCollider.enabled = false;
+
+        foreach (Renderer rend in allRenderers)
+        {
+            rend.enabled = false;
+        }
+
+        foreach (Collider col in allColliders)
+        {
+            col.enabled = false;
+        }
     }
 
+    // ✅ 显示自身和所有子级的Renderer与Collider
     private void ShowObject()
     {
         isHidden = false;
-        objRenderer.enabled = true;
-        objCollider.enabled = true;
+
+        foreach (Renderer rend in allRenderers)
+        {
+            rend.enabled = true;
+        }
+
+        foreach (Collider col in allColliders)
+        {
+            col.enabled = true;
+        }
     }
 }
