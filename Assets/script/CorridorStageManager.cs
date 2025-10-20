@@ -1,10 +1,20 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class CorridorStageManager : MonoBehaviour
 {
     public Transform player;
+
+    [Header("走廊模型")]
     public GameObject[] normalCorridors;
     public GameObject[] abnormalCorridors;
+
+    [Header("初始走廊（第1阶段）")]
+    public GameObject initialCorridor;
+
+    [Header("初始走廊的两个门")]
+    public DoorInteraction initialDoorA; // 第1阶段走廊的门A
+    public DoorInteraction initialDoorB; // 第1阶段走廊的门B
 
     [Header("平移设置")]
     public float forwardOffsetX = 10f;
@@ -18,148 +28,239 @@ public class CorridorStageManager : MonoBehaviour
     private GameObject nextCorridor;
 
     private bool[] usedAbnormalCorridors;
+    private bool isTransitioning = false;
 
     void Start()
     {
         usedAbnormalCorridors = new bool[abnormalCorridors.Length];
+        previousCorridor = null;
+        nextCorridor = null;
 
-        if (normalCorridors.Length > 0)
-        {
-            currentCorridor = normalCorridors[0];
-            currentCorridor.SetActive(true);
-            previousCorridor = null;
-            nextCorridor = (normalCorridors.Length > 1) ? normalCorridors[1] : null;
-            if (nextCorridor != null) nextCorridor.SetActive(true);
-        }
-        else
-        {
-            Debug.LogError("正常走廊数组为空！");
-        }
+        currentCorridor = initialCorridor != null ? initialCorridor : normalCorridors[0];
+        currentCorridor.SetActive(true);
+        ResetDoorState(currentCorridor);
+
+        Debug.Log($"初始阶段：{currentStage}，当前走廊：{currentCorridor.name}");
     }
 
     void Update()
     {
-        if (currentCorridor == null) return;
+        if (currentCorridor == null || isTransitioning) return;
 
         DoorInteraction door = currentCorridor.GetComponentInChildren<DoorInteraction>();
-        if (door == null || door.openDirection == 0) return;
 
-        if (door.openDirection > 0)
+            if (door == null) return;
+
+            if (door.openDirection != 0)
+            {
+                int dir = door.openDirection;
+                door.openDirection = 0;
+                isTransitioning = true;
+
+                if (dir > 0)
+                    MoveForward(dir);
+                else
+                    MoveBackward(dir);
+            }
+        
+        if (initialDoorA.openDirection != 0)
         {
-            HandleForwardMovement();
-        }
-        else
-        {
-            HandleBackwardMovement();
+            int dir = initialDoorA.openDirection;
+            initialDoorA.openDirection = 0;
+            isTransitioning = true;
+
+            if (dir > 0)
+                MoveForward(dir);
+            else
+                MoveBackward(dir);
         }
 
-        // 只保持当前走廊和相邻走廊激活
-        ActivateRelevantCorridors();
+        if (initialDoorB.openDirection != 0)
+        {
+            int dir = initialDoorB.openDirection;
+            initialDoorB.openDirection = 0;
+            isTransitioning = true;
+
+            if (dir > 0)
+                MoveForward(dir);
+            else
+                MoveBackward(dir);
+        }
     }
 
-    void HandleForwardMovement()
+    void MoveForward(int dir)
     {
-        if (currentStage == 6)
+        // 异常走廊前进回到第1阶段
+        if (IsCurrentCorridorAbnormal())
         {
-            Debug.Log("逃脱成功！");
+            ResetToFirstStage(dir);
+            isTransitioning = false;
             return;
         }
 
-        bool isNextNormal = IsNextCorridorNormal();
-        if (isNextNormal)
+        previousCorridor = currentCorridor;
+        currentStage++;
+
+        bool useNormal = DecideIfNextCorridorIsNormal();
+        if (useNormal)
         {
-            TransitionToNextStage(true);
+            currentCorridor = GetNextNormalCorridor();
+            PositionCorridor(currentCorridor, previousCorridor, true,1);
         }
         else
         {
-            Debug.Log("异常走廊，回到第1阶段");
-            ResetToFirstStage();
+            currentCorridor = GetRandomAbnormalCorridor();
+            PositionCorridor(currentCorridor, previousCorridor, !currentCorridor.activeSelf,1);
         }
+
+        ResetDoorState(currentCorridor);
+        nextCorridor = null;
+        ActivateRelevantCorridors();
+        isTransitioning = false;
+
+        Debug.Log($"进入第{currentStage}阶段（{(useNormal ? "正常" : "异常")}走廊）：{currentCorridor.name}");
     }
 
-    void HandleBackwardMovement()
+    void MoveBackward(int dir)
     {
-        Debug.Log("折返，回到第1阶段");
-        ResetToFirstStage();
-    }
-
-    bool IsNextCorridorNormal()
-    {
-        // 第6阶段一定异常
-        if (currentStage + 1 == 6) return false;
-
-        if (currentStage < normalCorridors.Length)
+        // 正常走廊后退回到第1阶段
+        if (IsCurrentCorridorNormal())
         {
-            Corridor corridorScript = normalCorridors[currentStage].GetComponent<Corridor>();
-            return corridorScript != null && corridorScript.corridorType == CorridorType.Normal;
+            ResetToFirstStage(dir);
+            isTransitioning = false;
+             return;
         }
-        return true;
-    }
 
-    void TransitionToNextStage(bool isForward)
-    {
-        // 更新阶段
+        previousCorridor = currentCorridor;
         currentStage++;
 
-        // 更新前后走廊引用
-        previousCorridor = currentCorridor;
-        currentCorridor = (currentStage == 6) ? GetRandomAbnormalCorridor() : normalCorridors[currentStage - 1];
-        nextCorridor = (currentStage < normalCorridors.Length) ? normalCorridors[currentStage] : null;
+        bool useNormal = DecideIfNextCorridorIsNormal();
+        if (useNormal)
+        {
+            currentCorridor = GetNextNormalCorridor();
+            PositionCorridor(currentCorridor, previousCorridor, true,-1);
+        }
+        else
+        {
+            currentCorridor = GetRandomAbnormalCorridor();
+            PositionCorridor(currentCorridor, previousCorridor, !currentCorridor.activeSelf,-1);
+        }
 
-        // 设置平移
-        Vector3 offset = isForward
-            ? new Vector3(forwardOffsetX, 0, forwardOffsetZ)
-            : new Vector3(backwardOffsetX, 0, backwardOffsetZ);
-
-        currentCorridor.transform.position = previousCorridor.transform.position + offset;
-
-        // 激活走廊
+        ResetDoorState(currentCorridor);
+        nextCorridor = null;
         ActivateRelevantCorridors();
+        isTransitioning = false;
+
+        Debug.Log($"进入第{currentStage}阶段（{(useNormal ? "正常" : "异常")}走廊）：{currentCorridor.name}");
     }
 
-    void ActivateRelevantCorridors()
+    bool IsCurrentCorridorNormal()
     {
-        // 保证当前走廊和前后相邻走廊激活，其他禁用
-        foreach (var c in normalCorridors)
-        {
-            c.SetActive(c == currentCorridor || c == previousCorridor || c == nextCorridor);
-        }
+        foreach (var n in normalCorridors)
+            if (n == currentCorridor) return true;
+        return false;
+    }
 
-        foreach (var c in abnormalCorridors)
-        {
-            c.SetActive(c == currentCorridor);
-        }
+    bool IsCurrentCorridorAbnormal()
+    {
+        foreach (var a in abnormalCorridors)
+            if (a == currentCorridor) return true;
+        return false;
+    }
+
+    bool DecideIfNextCorridorIsNormal()
+    {
+        if (currentStage == 1) return true;
+        if (currentStage >= 2 && currentStage <= 5)
+            return Random.Range(0, 4) != 0; // 3/4 正常
+        return false; // 第6阶段可特殊处理
+    }
+
+    GameObject GetNextNormalCorridor()
+    {
+        int index = (currentStage - 1) % normalCorridors.Length;
+        return normalCorridors[index];
     }
 
     GameObject GetRandomAbnormalCorridor()
     {
         int index = Random.Range(0, abnormalCorridors.Length);
-        int attempts = 0;
-        while (usedAbnormalCorridors[index] && attempts < 10)
+        int tries = 0;
+        while (usedAbnormalCorridors[index] && tries < 20)
         {
             index = Random.Range(0, abnormalCorridors.Length);
-            attempts++;
+            tries++;
         }
-
         usedAbnormalCorridors[index] = true;
         return abnormalCorridors[index];
     }
 
-    void ResetToFirstStage()
+    void PositionCorridor(GameObject corridor, GameObject reference, bool doOffset,int dir)
+    {
+        if (corridor == null || reference == null) return;
+        if (!doOffset) return;
+
+        if(dir>0){
+        Vector3 offset = new Vector3(forwardOffsetX, 0, forwardOffsetZ);
+        corridor.transform.position = reference.transform.position + offset;
+        }else{
+        Vector3 offset = new Vector3(backwardOffsetX, 0, backwardOffsetZ);
+        corridor.transform.position = reference.transform.position + offset;
+        }
+        
+    }
+
+    void ActivateRelevantCorridors()
+    {
+        if (currentCorridor != null) currentCorridor.SetActive(true);
+        if (previousCorridor != null) previousCorridor.SetActive(true);
+        if (nextCorridor != null) nextCorridor.SetActive(true);
+
+        foreach (var n in normalCorridors)
+        {
+            if (n != currentCorridor && n != previousCorridor){
+                //n.SetActive(false);
+               }
+        }
+
+        foreach (var a in abnormalCorridors)
+        {
+            if (a != currentCorridor && a != previousCorridor){
+                a.SetActive(false);
+               }
+        }
+
+        if (initialCorridor != currentCorridor && initialCorridor != previousCorridor){
+                initialCorridor.SetActive(false);
+               }
+    }
+
+    void ResetToFirstStage(int dir)
     {
         currentStage = 1;
-        previousCorridor = null;
+        nextCorridor = null;
+        previousCorridor = currentCorridor;
         currentCorridor = normalCorridors[0];
-        nextCorridor = (normalCorridors.Length > 1) ? normalCorridors[1] : null;
+        PositionCorridor(currentCorridor, previousCorridor, true,dir);
+        ResetDoorState(currentCorridor);
+        ActivateRelevantCorridors();
 
-        // 禁用异常走廊
-        for (int i = 0; i < abnormalCorridors.Length; i++)
-            abnormalCorridors[i].SetActive(false);
-
-        // 重置异常走廊记录
         for (int i = 0; i < usedAbnormalCorridors.Length; i++)
             usedAbnormalCorridors[i] = false;
 
-        ActivateRelevantCorridors();
+        Debug.Log("回到第1阶段，重置完成");
+    }
+
+    void ResetDoorState(GameObject corridor)
+    {
+        if (corridor == null) return;
+        DoorInteraction[] doors = corridor.GetComponentsInChildren<DoorInteraction>();
+        foreach (var d in doors)
+        {
+            d.CloseDoorInstantly();
+            d.isOpen = false;
+            d.canInteract = true;
+            d.openDirection = 0;
+        }
     }
 }

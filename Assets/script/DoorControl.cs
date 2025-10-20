@@ -8,7 +8,7 @@ public class DoorInteraction : MonoBehaviour
     public GameObject promptText; // “按E开门”提示
 
     [Header("门动画设置")]
-    private Animator doorAnimator; // 当前门的 Animator（自动获取）
+    public Animator doorAnimator; // 当前门的 Animator（自动获取）
     public string openParameter = "isOpen"; // Animator 参数名
     public string openDirectionParameter = "OpenDirection"; // Animator 参数名（float或int）
 
@@ -142,4 +142,24 @@ public class DoorInteraction : MonoBehaviour
                 promptText.SetActive(false);
         }
     }
+
+    public void CloseDoorInstantly()
+{
+    isOpen = false;
+    canInteract = true;
+
+    // 重置动画
+    if (doorAnimator != null && !string.IsNullOrEmpty(openParameter))
+        doorAnimator.SetBool(openParameter, false);
+
+    if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
+        linkedDoorAnimator.SetBool(openParameter, false);
+
+    // 重置开门方向
+    openDirection = 0;
+
+    // 显示提示
+    // if (promptText != null)
+    //     promptText.SetActive(true);
+}
 }

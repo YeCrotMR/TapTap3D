@@ -80,7 +80,7 @@ public class FirstPlayerController : MonoBehaviour
                         || RaycastUpCheckCrouch(transform.position + new Vector3(0.71f, 0, 0.71f), 10f)
                         )
                         {
-                            Debug.Log("ttt");
+                            //Debug.Log("ttt");
                             isCrouching = true;
                         }
                         else
@@ -108,7 +108,7 @@ public class FirstPlayerController : MonoBehaviour
         inputDir = (camForward * vertical + camRight * horizontal).normalized;
 
         isRunning = Input.GetKey(KeyCode.LeftShift) && inputDir != Vector3.zero && !isCrouching;
-        Debug.Log("上面有东西：" + RaycastUpCheckCrouch(transform.position, 10f));
+        //Debug.Log("上面有东西：" + RaycastUpCheckCrouch(transform.position, 10f));
 
         // 跳跃（只在落地且非下蹲时）
         isGrounded = controller.isGrounded;
