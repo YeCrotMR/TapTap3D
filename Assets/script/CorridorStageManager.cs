@@ -68,7 +68,7 @@ public class CorridorStageManager : MonoBehaviour
                     MoveForward(dir);
                 else
                     MoveBackward(dir);
-                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+                    //Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
             }
 
             if(previousCorridor != null){
@@ -84,7 +84,7 @@ public class CorridorStageManager : MonoBehaviour
                         MoveForward(dir);
                     else
                         MoveBackward(dir);
-                        Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+                        //Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
                 }
             }
         }else{
@@ -98,7 +98,7 @@ public class CorridorStageManager : MonoBehaviour
                     MoveForward(dir);
                 else
                     MoveBackward(dir);
-                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+                    //Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
             }
 
             if (initialDoorB.openDirection != 0)
@@ -111,7 +111,7 @@ public class CorridorStageManager : MonoBehaviour
                     MoveForward(dir);
                 else
                     MoveBackward(dir);
-                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+                    //Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
             }
         }
     }
@@ -131,6 +131,7 @@ public class CorridorStageManager : MonoBehaviour
         }
         if(previousCorridor != null){
             lastpreviousCorridor = previousCorridor;
+            Debug.Log(lastpreviousCorridor.name);
         }
         previousCorridor = currentCorridor;
         currentStage++;
@@ -173,6 +174,7 @@ public class CorridorStageManager : MonoBehaviour
         }
         if(previousCorridor != null){
             lastpreviousCorridor = previousCorridor;
+            Debug.Log(lastpreviousCorridor.name);
         }
         previousCorridor = currentCorridor;
         currentStage++;
@@ -180,6 +182,7 @@ public class CorridorStageManager : MonoBehaviour
         if(lastpreviousCorridor != null){
         DoorInteraction predoor = lastpreviousCorridor.GetComponentInChildren<DoorInteraction>();
         predoor.isLocked = true;
+        
         }
         
 
@@ -227,7 +230,14 @@ public class CorridorStageManager : MonoBehaviour
 
     GameObject GetNextNormalCorridor()
     {
-        int index = (currentStage - 1) % normalCorridors.Length;
+        int index = 0;
+        for (int i = 0; i < normalCorridors.Length; i++){
+            if(currentCorridor != normalCorridors[i] && previousCorridor != normalCorridors[i] && lastpreviousCorridor != normalCorridors[i] ){
+                index = i;
+                break;
+            }
+        }
+        //int index = (currentStage - 1) % normalCorridors.Length;
         return normalCorridors[index];
     }
 
@@ -290,6 +300,7 @@ public class CorridorStageManager : MonoBehaviour
         currentStage = 1;
         if(previousCorridor != null){
             lastpreviousCorridor = previousCorridor;
+            Debug.Log(lastpreviousCorridor.name);
         }
         previousCorridor = currentCorridor;
         if(lastpreviousCorridor != null){
@@ -298,8 +309,8 @@ public class CorridorStageManager : MonoBehaviour
         }
         
         //currentCorridor = normalCorridors[0];
-        for (int i = 0; i < normalCorridors.Length; i++){
-            if(currentCorridor.name != normalCorridors[i].name){
+        for (int i = 0; i <= normalCorridors.Length; i++){
+            if(currentCorridor != normalCorridors[i] && previousCorridor != normalCorridors[i] && lastpreviousCorridor != normalCorridors[i]){
                 currentCorridor = normalCorridors[i];
                 i = normalCorridors.Length;
             }
