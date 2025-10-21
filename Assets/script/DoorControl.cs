@@ -11,10 +11,15 @@ public class DoorInteraction : MonoBehaviour
     public Animator doorAnimator; // 当前门的 Animator（自动获取）
     public string openParameter = "isOpen"; // Animator 参数名
 
-
     [Header("交互设置")]
     public KeyCode interactKey = KeyCode.E; // 交互按键
     public bool canInteract = true;          // 防止重复交互
+
+    [Header("锁门选项")]
+    [Tooltip("勾选后门无法打开，直到手动解锁。")]
+    public bool isLocked = false;            // 是否锁门
+    public UnityEvent onDoorLocked;          // 锁门事件
+    public UnityEvent onDoorUnlocked;        // 解锁事件
 
     [Header("可选关联门")]
     public GameObject linkedDoor; // 关联门对象（只需拖GameObject）
@@ -26,15 +31,22 @@ public class DoorInteraction : MonoBehaviour
 
     private bool isPlayerNear = false;
     public bool isOpen = false;
-
     public bool isIntialDoor;
 
-    private Animator linkedDoorAnimator; // 自动识别的关联门Animator
-    private Transform player;            // 自动找到玩家对象
+    private Animator linkedDoorAnimator;
+    private Transform player;
 
     [Header("开门方向状态（+1=正向，-1=反向）")]
-    [Tooltip("外部程序可读取此值判断开门方向")]
-    public int openDirection = 0; // 供外部脚本读取使用
+    [Tooltip("外部程序可读取此值判断开门方向（写入也可触发锁存）")]
+    public int openDirection = 0;
+
+    [Header("锁存方向（自动记录第一次开门方向）")]
+    [Tooltip("只在门打开时记录方向，关门后重置")]
+    public int latchedOpenDirection = 0;
+
+    [Header("自动关门参数")]
+    [Tooltip("玩家离开多远时自动关门（仅门打开后检测）")]
+    public float autoCloseDistance = 3f;
 
     void Start()
     {
@@ -62,19 +74,48 @@ public class DoorInteraction : MonoBehaviour
 
     void Update()
     {
-        doorAnimator = GetComponent<Animator>();
-        if (linkedDoor != null)
-        {
+        if (doorAnimator == null)
+            doorAnimator = GetComponent<Animator>();
+
+        if (linkedDoor != null && linkedDoorAnimator == null)
             linkedDoorAnimator = linkedDoor.GetComponent<Animator>();
-            if (linkedDoorAnimator == null)
-                Debug.LogWarning($"[DoorInteraction] 关联门 {linkedDoor.name} 上没有找到 Animator！");
+
+        // --- 捕捉外部设置的 openDirection 并锁存 ---
+        if (openDirection != 0 && latchedOpenDirection == 0)
+        {
+            latchedOpenDirection = openDirection;
+            Debug.Log($"[DoorInteraction] 锁存开门方向：{latchedOpenDirection}");
         }
 
-        if (!canInteract || isOpen) return;
-
-        if (isPlayerNear && Input.GetKeyDown(interactKey))
+        // 玩家交互开门
+        if (isPlayerNear && Input.GetKeyDown(interactKey) && canInteract)
         {
+            if (isLocked)
+            {
+                Debug.Log($"[DoorInteraction] 门 {name} 已上锁，无法打开。");
+                onDoorLocked?.Invoke(); // 触发锁门反馈事件（可播放音效等）
+                return;
+            }
+
             OpenDoor();
+        }
+
+        // --- 自动关门检测 ---
+        if (isOpen && player != null && latchedOpenDirection != 0)
+        {
+            float diffX = player.position.x - transform.position.x;
+
+            if (latchedOpenDirection == 1 && diffX > autoCloseDistance)
+            {
+                CloseDoorInstantly();
+                Debug.Log("[DoorInteraction] 玩家离开（正向）→ 自动关门");
+            }
+
+            if (latchedOpenDirection == -1 && diffX < -autoCloseDistance)
+            {
+                CloseDoorInstantly();
+                Debug.Log("[DoorInteraction] 玩家离开（反向）→ 自动关门");
+            }
         }
     }
 
@@ -90,40 +131,34 @@ public class DoorInteraction : MonoBehaviour
         {
             float relativeX = player.position.x - transform.position.x;
             openDirection = (relativeX < 0) ? +1 : -1;
-            Debug.Log(openDirection);
         }
         else
         {
-            openDirection = +1; // 默认正向
+            openDirection = +1;
         }
+
+        // 永久锁存方向直到关门
+        if (latchedOpenDirection == 0)
+            latchedOpenDirection = openDirection;
 
         // --- 播放动画 ---
-        if (doorAnimator != null)
-        {
-            if (!string.IsNullOrEmpty(openParameter))
-                doorAnimator.SetBool(openParameter, true);
-        }
+        if (doorAnimator != null && !string.IsNullOrEmpty(openParameter))
+            doorAnimator.SetBool(openParameter, true);
 
-        // --- 播放关联门动画（可选）---
-        if (linkedDoorAnimator != null)
-        {
-            if (!string.IsNullOrEmpty(openParameter))
-                linkedDoorAnimator.SetBool(openParameter, true);
-        }
+        if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
+            linkedDoorAnimator.SetBool(openParameter, true);
 
-        // 隐藏提示
         if (promptText != null)
             promptText.SetActive(false);
 
-        // --- 调用事件 ---
+        // --- 事件触发 ---
         onDoorOpened?.Invoke();
-
         if (openDirection > 0)
             onDoorOpenedForward?.Invoke();
         else
             onDoorOpenedBackward?.Invoke();
 
-        Debug.Log($"[DoorInteraction] 门 {name} 已打开。方向：{(openDirection > 0 ? "正向" : "反向")}");
+        Debug.Log($"[DoorInteraction] 门 {name} 已打开，方向：{(openDirection > 0 ? "正向" : "反向")}");
     }
 
     void OnTriggerEnter(Collider other)
@@ -149,24 +184,36 @@ public class DoorInteraction : MonoBehaviour
     }
 
     public void CloseDoorInstantly()
-{
-    isOpen = false;
-    canInteract = true;
+    {
+        isOpen = false;
+        canInteract = true;
+        isLocked = false;
 
-    // 重置动画
-    if (doorAnimator != null && !string.IsNullOrEmpty(openParameter)){
-        doorAnimator.SetBool(openParameter, false);
-        Debug.Log("我操死你的妈");
-        }
+        if (doorAnimator != null && !string.IsNullOrEmpty(openParameter))
+            doorAnimator.SetBool(openParameter, false);
 
-    if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
-        linkedDoorAnimator.SetBool(openParameter, false);
+        if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
+            linkedDoorAnimator.SetBool(openParameter, false);
 
-    // 重置开门方向
-    openDirection = 0;
+        // 清空方向
+        openDirection = 0;
+        latchedOpenDirection = 0;
+    }
 
-    // 显示提示
-    // if (promptText != null)
-    //     promptText.SetActive(true);
-}
+    // -------------------------------
+    // 🔒 外部控制接口
+    // -------------------------------
+    public void LockDoor()
+    {
+        isLocked = true;
+        onDoorLocked?.Invoke();
+        Debug.Log($"[DoorInteraction] 门 {name} 已被锁定。");
+    }
+
+    public void UnlockDoor()
+    {
+        isLocked = false;
+        onDoorUnlocked?.Invoke();
+        Debug.Log($"[DoorInteraction] 门 {name} 已解锁。");
+    }
 }

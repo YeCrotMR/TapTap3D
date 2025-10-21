@@ -26,16 +26,21 @@ public class CorridorStageManager : MonoBehaviour
     private int currentStage = 1;
     private GameObject currentCorridor;
     private GameObject previousCorridor;
-    private GameObject nextCorridor;
+    private GameObject lastpreviousCorridor;
 
     private bool[] usedAbnormalCorridors;
     private bool isTransitioning = false;
+
+    private int forwardCount = 0;
+    private int backwardCount = 0;
+    private int lastDirection = 0;
+    private int nowDirection = 0;
 
     void Start()
     {
         usedAbnormalCorridors = new bool[abnormalCorridors.Length];
         previousCorridor = null;
-        nextCorridor = null;
+        lastpreviousCorridor = null;
 
         currentCorridor = initialCorridor != null ? initialCorridor : normalCorridors[0];
         currentCorridor.SetActive(true);
@@ -46,10 +51,12 @@ public class CorridorStageManager : MonoBehaviour
 
     void Update()
     {
-        if (currentCorridor == null || isTransitioning) return;
-
-        DoorInteraction door = currentCorridor.GetComponentInChildren<DoorInteraction>();
-
+        //if (currentCorridor == null || isTransitioning) return;
+        
+        if(currentCorridor != initialCorridor){
+            
+            DoorInteraction door = currentCorridor.GetComponentInChildren<DoorInteraction>();
+            
             if (door == null) return;
 
             if (door.openDirection != 0 )
@@ -57,40 +64,64 @@ public class CorridorStageManager : MonoBehaviour
                 int dir = door.openDirection;
                 door.openDirection = 0;
                 isTransitioning = true;
+                if (dir > 0)
+                    MoveForward(dir);
+                else
+                    MoveBackward(dir);
+                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+            }
+
+            if(previousCorridor != null){
+                DoorInteraction predoor = previousCorridor.GetComponentInChildren<DoorInteraction>();
+
+                if (predoor.openDirection != 0 )
+                {
+                    int dir = predoor.openDirection;
+                    predoor.openDirection = 0;
+                    isTransitioning = true;
+
+                    if (dir > 0)
+                        MoveForward(dir);
+                    else
+                        MoveBackward(dir);
+                        Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+                }
+            }
+        }else{
+            if (initialDoorA.openDirection != 0)
+            {
+                int dir = initialDoorA.openDirection;
+                initialDoorA.openDirection = 0;
+                isTransitioning = true;
 
                 if (dir > 0)
                     MoveForward(dir);
                 else
                     MoveBackward(dir);
+                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
             }
-        
-        // if (initialDoorA.openDirection != 0)
-        // {
-        //     int dir = initialDoorA.openDirection;
-        //     initialDoorA.openDirection = 0;
-        //     isTransitioning = true;
 
-        //     if (dir > 0)
-        //         MoveForward(dir);
-        //     else
-        //         MoveBackward(dir);
-        // }
+            if (initialDoorB.openDirection != 0)
+            {
+                int dir = initialDoorB.openDirection;
+                initialDoorB.openDirection = 0;
+                isTransitioning = true;
 
-        // if (initialDoorB.openDirection != 0)
-        // {
-        //     int dir = initialDoorB.openDirection;
-        //     initialDoorB.openDirection = 0;
-        //     isTransitioning = true;
-
-        //     if (dir > 0)
-        //         MoveForward(dir);
-        //     else
-        //         MoveBackward(dir);
-        // }
+                if (dir > 0)
+                    MoveForward(dir);
+                else
+                    MoveBackward(dir);
+                    Debug.Log($"nowDirection：{nowDirection}，lastDirection：{lastDirection}");
+            }
+        }
     }
 
     void MoveForward(int dir)
     {
+        lastDirection = nowDirection;
+        nowDirection = 1;
+
+        
         // 异常走廊前进回到第1阶段
         if (IsCurrentCorridorAbnormal())
         {
@@ -98,9 +129,16 @@ public class CorridorStageManager : MonoBehaviour
             isTransitioning = false;
             return;
         }
-
+        if(previousCorridor != null){
+            lastpreviousCorridor = previousCorridor;
+        }
         previousCorridor = currentCorridor;
         currentStage++;
+
+        if(lastpreviousCorridor != null){
+        DoorInteraction predoor = lastpreviousCorridor.GetComponentInChildren<DoorInteraction>();
+        predoor.isLocked = true;
+        }
 
         bool useNormal = DecideIfNextCorridorIsNormal();
         if (useNormal)
@@ -115,15 +153,17 @@ public class CorridorStageManager : MonoBehaviour
         }
 
         ResetDoorState(currentCorridor);
-        nextCorridor = null;
         ActivateRelevantCorridors();
         isTransitioning = false;
-
+        forwardCount++;
+        
         Debug.Log($"进入第{currentStage}阶段（{(useNormal ? "正常" : "异常")}走廊）：{currentCorridor.name}");
     }
 
     void MoveBackward(int dir)
     {
+        lastDirection = nowDirection;
+        nowDirection = -1;
         // 正常走廊后退回到第1阶段
         if (IsCurrentCorridorNormal())
         {
@@ -131,9 +171,17 @@ public class CorridorStageManager : MonoBehaviour
             isTransitioning = false;
              return;
         }
-
+        if(previousCorridor != null){
+            lastpreviousCorridor = previousCorridor;
+        }
         previousCorridor = currentCorridor;
         currentStage++;
+
+        if(lastpreviousCorridor != null){
+        DoorInteraction predoor = lastpreviousCorridor.GetComponentInChildren<DoorInteraction>();
+        predoor.isLocked = true;
+        }
+        
 
         bool useNormal = DecideIfNextCorridorIsNormal();
         if (useNormal)
@@ -148,10 +196,10 @@ public class CorridorStageManager : MonoBehaviour
         }
 
         ResetDoorState(currentCorridor);
-        nextCorridor = null;
         ActivateRelevantCorridors();
         isTransitioning = false;
-
+        backwardCount++;
+        
         Debug.Log($"进入第{currentStage}阶段（{(useNormal ? "正常" : "异常")}走廊）：{currentCorridor.name}");
     }
 
@@ -213,24 +261,26 @@ public class CorridorStageManager : MonoBehaviour
     void ActivateRelevantCorridors()
     {
         if (currentCorridor != null) currentCorridor.SetActive(true);
+        if ((nowDirection * lastDirection) < 0) currentCorridor.transform.GetChild(3).gameObject.SetActive(true);
         if (previousCorridor != null) previousCorridor.SetActive(true);
-        if (nextCorridor != null) nextCorridor.SetActive(true);
+        if (lastpreviousCorridor != null) lastpreviousCorridor.SetActive(true);
+        
 
         foreach (var n in normalCorridors)
         {
-            if (n != currentCorridor && n != previousCorridor){
+            if (n != currentCorridor && n != previousCorridor && n != lastpreviousCorridor){
                 n.SetActive(false);
                }
         }
 
         foreach (var a in abnormalCorridors)
         {
-            if (a != currentCorridor && a != previousCorridor){
+            if (a != currentCorridor && a != previousCorridor && a != lastpreviousCorridor){
                 a.SetActive(false);
                }
         }
 
-        if (initialCorridor != currentCorridor && initialCorridor != previousCorridor){
+        if (initialCorridor != currentCorridor && initialCorridor != previousCorridor && initialCorridor != lastpreviousCorridor){
                 initialCorridor.SetActive(false);
                }
     }
@@ -238,9 +288,22 @@ public class CorridorStageManager : MonoBehaviour
     void ResetToFirstStage(int dir)
     {
         currentStage = 1;
-        nextCorridor = null;
+        if(previousCorridor != null){
+            lastpreviousCorridor = previousCorridor;
+        }
         previousCorridor = currentCorridor;
-        currentCorridor = normalCorridors[0];
+        if(lastpreviousCorridor != null){
+            DoorInteraction predoor = lastpreviousCorridor.GetComponentInChildren<DoorInteraction>();
+            predoor.isLocked = true;
+        }
+        
+        //currentCorridor = normalCorridors[0];
+        for (int i = 0; i < normalCorridors.Length; i++){
+            if(currentCorridor.name != normalCorridors[i].name){
+                currentCorridor = normalCorridors[i];
+                i = normalCorridors.Length;
+            }
+        }
         PositionCorridor(currentCorridor, previousCorridor, true,dir);
         ResetDoorState(currentCorridor);
         ActivateRelevantCorridors();
