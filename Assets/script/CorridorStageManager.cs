@@ -22,6 +22,7 @@ public class CorridorStageManager : MonoBehaviour
     public float backwardOffsetX = -10f;
     public float backwardOffsetZ = 0f;
 
+
     private int currentStage = 1;
     private GameObject currentCorridor;
     private GameObject previousCorridor;
@@ -51,7 +52,7 @@ public class CorridorStageManager : MonoBehaviour
 
             if (door == null) return;
 
-            if (door.openDirection != 0)
+            if (door.openDirection != 0 )
             {
                 int dir = door.openDirection;
                 door.openDirection = 0;
@@ -63,29 +64,29 @@ public class CorridorStageManager : MonoBehaviour
                     MoveBackward(dir);
             }
         
-        if (initialDoorA.openDirection != 0)
-        {
-            int dir = initialDoorA.openDirection;
-            initialDoorA.openDirection = 0;
-            isTransitioning = true;
+        // if (initialDoorA.openDirection != 0)
+        // {
+        //     int dir = initialDoorA.openDirection;
+        //     initialDoorA.openDirection = 0;
+        //     isTransitioning = true;
 
-            if (dir > 0)
-                MoveForward(dir);
-            else
-                MoveBackward(dir);
-        }
+        //     if (dir > 0)
+        //         MoveForward(dir);
+        //     else
+        //         MoveBackward(dir);
+        // }
 
-        if (initialDoorB.openDirection != 0)
-        {
-            int dir = initialDoorB.openDirection;
-            initialDoorB.openDirection = 0;
-            isTransitioning = true;
+        // if (initialDoorB.openDirection != 0)
+        // {
+        //     int dir = initialDoorB.openDirection;
+        //     initialDoorB.openDirection = 0;
+        //     isTransitioning = true;
 
-            if (dir > 0)
-                MoveForward(dir);
-            else
-                MoveBackward(dir);
-        }
+        //     if (dir > 0)
+        //         MoveForward(dir);
+        //     else
+        //         MoveBackward(dir);
+        // }
     }
 
     void MoveForward(int dir)
@@ -185,11 +186,9 @@ public class CorridorStageManager : MonoBehaviour
     GameObject GetRandomAbnormalCorridor()
     {
         int index = Random.Range(0, abnormalCorridors.Length);
-        int tries = 0;
-        while (usedAbnormalCorridors[index] && tries < 20)
+        while (usedAbnormalCorridors[index])
         {
             index = Random.Range(0, abnormalCorridors.Length);
-            tries++;
         }
         usedAbnormalCorridors[index] = true;
         return abnormalCorridors[index];
@@ -206,8 +205,9 @@ public class CorridorStageManager : MonoBehaviour
         }else{
         Vector3 offset = new Vector3(backwardOffsetX, 0, backwardOffsetZ);
         corridor.transform.position = reference.transform.position + offset;
+        corridor.transform.localScale = new Vector3(-1, 1, 1);
         }
-        
+        ResetDoorState(currentCorridor);
     }
 
     void ActivateRelevantCorridors()
@@ -219,7 +219,7 @@ public class CorridorStageManager : MonoBehaviour
         foreach (var n in normalCorridors)
         {
             if (n != currentCorridor && n != previousCorridor){
-                //n.SetActive(false);
+                n.SetActive(false);
                }
         }
 

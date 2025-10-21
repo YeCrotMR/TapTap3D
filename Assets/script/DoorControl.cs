@@ -10,7 +10,7 @@ public class DoorInteraction : MonoBehaviour
     [Header("门动画设置")]
     public Animator doorAnimator; // 当前门的 Animator（自动获取）
     public string openParameter = "isOpen"; // Animator 参数名
-    public string openDirectionParameter = "OpenDirection"; // Animator 参数名（float或int）
+
 
     [Header("交互设置")]
     public KeyCode interactKey = KeyCode.E; // 交互按键
@@ -26,6 +26,8 @@ public class DoorInteraction : MonoBehaviour
 
     private bool isPlayerNear = false;
     public bool isOpen = false;
+
+    public bool isIntialDoor;
 
     private Animator linkedDoorAnimator; // 自动识别的关联门Animator
     private Transform player;            // 自动找到玩家对象
@@ -60,6 +62,14 @@ public class DoorInteraction : MonoBehaviour
 
     void Update()
     {
+        doorAnimator = GetComponent<Animator>();
+        if (linkedDoor != null)
+        {
+            linkedDoorAnimator = linkedDoor.GetComponent<Animator>();
+            if (linkedDoorAnimator == null)
+                Debug.LogWarning($"[DoorInteraction] 关联门 {linkedDoor.name} 上没有找到 Animator！");
+        }
+
         if (!canInteract || isOpen) return;
 
         if (isPlayerNear && Input.GetKeyDown(interactKey))
@@ -92,9 +102,6 @@ public class DoorInteraction : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(openParameter))
                 doorAnimator.SetBool(openParameter, true);
-
-            if (!string.IsNullOrEmpty(openDirectionParameter))
-                doorAnimator.SetFloat(openDirectionParameter, openDirection);
         }
 
         // --- 播放关联门动画（可选）---
@@ -102,8 +109,6 @@ public class DoorInteraction : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(openParameter))
                 linkedDoorAnimator.SetBool(openParameter, true);
-            if (!string.IsNullOrEmpty(openDirectionParameter))
-                linkedDoorAnimator.SetFloat(openDirectionParameter, openDirection);
         }
 
         // 隐藏提示
@@ -149,8 +154,10 @@ public class DoorInteraction : MonoBehaviour
     canInteract = true;
 
     // 重置动画
-    if (doorAnimator != null && !string.IsNullOrEmpty(openParameter))
+    if (doorAnimator != null && !string.IsNullOrEmpty(openParameter)){
         doorAnimator.SetBool(openParameter, false);
+        Debug.Log("我操死你的妈");
+        }
 
     if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
         linkedDoorAnimator.SetBool(openParameter, false);
