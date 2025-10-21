@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Versioning;
 using UnityEngine;
 
 public class RadioAnormaly : MonoBehaviour
 {
     [Header("音频资源")]
     public AudioClip morningGreeting;    // 早晨问候语
-    public AudioClip noonGreeting;       // 午间问候语（异常）
+    public AudioClip noonGreeting1;       // 午间问候语（异常）
+    public AudioClip noonGreeting2;
 
     [Header("触发设置")]
     public float triggerRadius = 5f;
@@ -23,15 +25,11 @@ public class RadioAnormaly : MonoBehaviour
     {
         isTurnOn = false;
         audioSource = GetComponent<AudioSource>();
-        audioSource.loop = true;
+//        audioSource.loop = true;
         if (Player == null)
             Player = GameObject.FindGameObjectWithTag("Player");
         //    loopIndex = 
         playerTransform = Player.transform;
-        if (loopIndex == 2)
-            audioSource.clip = noonGreeting;
-        else
-            audioSource.clip = morningGreeting;
     }
 
     // Update is called once per frame
@@ -50,7 +48,25 @@ public class RadioAnormaly : MonoBehaviour
     void PlayGreeting()
     {
         isTurnOn = true;
-        audioSource.Play();
+        if (loopIndex == 2)
+        {
+            StartCoroutine(PlayNoonAudio());
+        }
+        else
+        {
+            audioSource.clip = morningGreeting;
+            audioSource.Play();
+        }
         Debug.Log("Greeting!");
+    }
+    IEnumerator PlayNoonAudio()
+    {
+        audioSource.clip = noonGreeting1;
+        audioSource.Play();
+
+        yield return new WaitForSeconds(noonGreeting1.length);
+
+        audioSource.clip = noonGreeting2;
+        audioSource.Play();
     }
 }
