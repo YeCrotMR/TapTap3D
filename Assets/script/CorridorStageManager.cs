@@ -169,9 +169,14 @@ public class CorridorStageManager : MonoBehaviour
         DoorInteraction[] lastpredoor = lastpreviousCorridor.GetComponentsInChildren<DoorInteraction>();
          foreach (var d in lastpredoor)
         {
+            d.CloseDoorInstantly();
             d.isLocked = true;
         }
         //lastpredoor.isLocked = true;
+        }
+        DoorInteraction predoor = previousCorridor.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) < 0){
+            predoor.isLocked = true;
         }
         initialDoorB.isLocked = true;
         if(lastpreviousCorridor == initialCorridor){
@@ -193,6 +198,7 @@ public class CorridorStageManager : MonoBehaviour
         ResetDoorState(currentCorridor);
         ActivateRelevantCorridors();
         DoorInteraction newdoor = previousCorridor.transform.GetChild(3).gameObject.GetComponentInChildren<DoorInteraction>();
+        newdoor.CloseDoorInstantly();
         newdoor.isLocked = true;
         isTransitioning = false;
         forwardCount++;
@@ -227,6 +233,10 @@ public class CorridorStageManager : MonoBehaviour
         //lastpredoor.isLocked = true;
         
         }
+        DoorInteraction predoor = previousCorridor.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) < 0){
+            predoor.isLocked = true;
+        }
         initialDoorA.isLocked = true;
         if(lastpreviousCorridor == initialCorridor){
             initialDoorB.isLocked = true;
@@ -249,6 +259,7 @@ public class CorridorStageManager : MonoBehaviour
         ResetDoorState(currentCorridor);
         ActivateRelevantCorridors();
         DoorInteraction newdoor = previousCorridor.transform.GetChild(3).gameObject.GetComponentInChildren<DoorInteraction>();
+        newdoor.CloseDoorInstantly();
         newdoor.isLocked = true;
         isTransitioning = false;
         backwardCount++;
@@ -382,6 +393,10 @@ public class CorridorStageManager : MonoBehaviour
                 d.isLocked = true;
             }
             //lastpredoor.isLocked = true;
+        }
+        DoorInteraction predoor = previousCorridor.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) < 0){
+            predoor.isLocked = true;
         }
         if(dir>0){
             if(lastpreviousCorridor == initialCorridor){
