@@ -48,16 +48,16 @@ public class DoorInteraction : MonoBehaviour
     [Tooltip("玩家离开多远时自动关门（仅门打开后检测）")]
     public float autoCloseDistance = 3f;
 
-    void Start()
+    public void Start()
     {
         // 自动获取 Animator
         doorAnimator = GetComponent<Animator>();
 
         // 自动查找 Player
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-        if (playerObj != null)
+        if (playerObj != null){
             player = playerObj.transform;
-        else
+        }else
             Debug.LogWarning("[DoorInteraction] 未找到Tag为 'Player' 的对象，无法判断开门方向。");
 
         // 查找关联门 Animator
@@ -74,17 +74,11 @@ public class DoorInteraction : MonoBehaviour
 
     void Update()
     {
-        if (doorAnimator == null)
-            doorAnimator = GetComponent<Animator>();
-
-        if (linkedDoor != null && linkedDoorAnimator == null)
-            linkedDoorAnimator = linkedDoor.GetComponent<Animator>();
-
         // --- 捕捉外部设置的 openDirection 并锁存 ---
         if (openDirection != 0 && latchedOpenDirection == 0)
         {
             latchedOpenDirection = openDirection;
-            Debug.Log($"[DoorInteraction] 锁存开门方向：{latchedOpenDirection}");
+            //Debug.Log($"[DoorInteraction] 锁存开门方向：{latchedOpenDirection}");
         }
 
         // 玩家交互开门
@@ -92,7 +86,7 @@ public class DoorInteraction : MonoBehaviour
         {
             if (isLocked)
             {
-                Debug.Log($"[DoorInteraction] 门 {name} 已上锁，无法打开。");
+                //Debug.Log($"[DoorInteraction] 门 {name} 已上锁，无法打开。");
                 onDoorLocked?.Invoke(); // 触发锁门反馈事件（可播放音效等）
                 return;
             }
@@ -108,19 +102,20 @@ public class DoorInteraction : MonoBehaviour
             if (latchedOpenDirection == 1 && diffX > autoCloseDistance)
             {
                 CloseDoorInstantly();
-                Debug.Log("[DoorInteraction] 玩家离开（正向）→ 自动关门");
+                //Debug.Log("[DoorInteraction] 玩家离开（正向）→ 自动关门");
             }
 
             if (latchedOpenDirection == -1 && diffX < -autoCloseDistance)
             {
                 CloseDoorInstantly();
-                Debug.Log("[DoorInteraction] 玩家离开（反向）→ 自动关门");
+                //Debug.Log("[DoorInteraction] 玩家离开（反向）→ 自动关门");
             }
         }
     }
 
     public void OpenDoor()
     {
+        
         if (isOpen) return;
 
         isOpen = true;
@@ -131,6 +126,7 @@ public class DoorInteraction : MonoBehaviour
         {
             float relativeX = player.position.x - transform.position.x;
             openDirection = (relativeX < 0) ? +1 : -1;
+            
         }
         else
         {
@@ -142,12 +138,13 @@ public class DoorInteraction : MonoBehaviour
             latchedOpenDirection = openDirection;
 
         // --- 播放动画 ---
-        if (doorAnimator != null && !string.IsNullOrEmpty(openParameter))
+        if (doorAnimator != null && !string.IsNullOrEmpty(openParameter)){
             doorAnimator.SetBool(openParameter, true);
+            }
 
-        if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter))
+        if (linkedDoorAnimator != null && !string.IsNullOrEmpty(openParameter)){
             linkedDoorAnimator.SetBool(openParameter, true);
-
+            }
         if (promptText != null)
             promptText.SetActive(false);
 
