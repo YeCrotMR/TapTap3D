@@ -130,6 +130,7 @@ public class DoorInteraction : MonoBehaviour
         }
         else
         {
+            Debug.Log("傻逼报错了");
             openDirection = +1;
         }
 
@@ -162,7 +163,7 @@ public class DoorInteraction : MonoBehaviour
     {
         if (!canInteract || isOpen) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Player") && !isLocked)
         {
             isPlayerNear = true;
             if (promptText != null)
