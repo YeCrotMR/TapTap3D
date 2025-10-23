@@ -3,7 +3,13 @@ guid: 8a507e1f4b4336c49af0a0bb56da36e0
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - player: {instanceID: 0}
+  - camera: {instanceID: 0}
+  - lookat: {instanceID: 0}
+  - teleportClip: {instanceID: 0}
+  - globalVolume: {instanceID: 0}
+  - manualMaterial: {fileID: 2100000, guid: 1ae3a40e81054c344bed4d0fdbac3882, type: 2}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
