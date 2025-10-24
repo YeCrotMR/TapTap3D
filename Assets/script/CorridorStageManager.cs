@@ -25,7 +25,7 @@ public class CorridorStageManager : MonoBehaviour
     public float specialBackwardOffsetX = -10f;
 
 
-    private int currentStage = 1;
+    public static int currentStage = 1;
     private GameObject currentCorridor;
     private GameObject previousCorridor;
     private GameObject lastpreviousCorridor;
@@ -40,6 +40,7 @@ public class CorridorStageManager : MonoBehaviour
 
     void Start()
     {
+        currentStage = 1;
         usedAbnormalCorridors = new bool[abnormalCorridors.Length];
         previousCorridor = null;
         lastpreviousCorridor = null;
@@ -213,6 +214,10 @@ public class CorridorStageManager : MonoBehaviour
         if((nowDirection * lastDirection) < 0){
             predoor.isLocked = true;
         }
+        DoorInteraction prebackdoor = previousCorridor.transform.GetChild(3).gameObject.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) > 0){
+            prebackdoor.isLocked = true;
+        }
         initialDoorB.isLocked = true;
         if(lastpreviousCorridor == initialCorridor){
             initialDoorA.isLocked = true;
@@ -272,6 +277,10 @@ public class CorridorStageManager : MonoBehaviour
         DoorInteraction predoor = previousCorridor.GetComponentInChildren<DoorInteraction>();
         if((nowDirection * lastDirection) < 0){
             predoor.isLocked = true;
+        }
+        DoorInteraction prebackdoor = previousCorridor.transform.GetChild(3).gameObject.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) > 0){
+            prebackdoor.isLocked = true;
         }
         initialDoorA.isLocked = true;
         if(lastpreviousCorridor == initialCorridor){
@@ -364,15 +373,24 @@ public class CorridorStageManager : MonoBehaviour
         }
 
         corridor.transform.position = reference.transform.position + offset;
-        corridor.transform.localScale = new Vector3(1, 1, 1);
-        
+        // corridor.transform.localScale = new Vector3(3.5f,3.5f, 3.5f);
+        if((nowDirection * lastDirection) < 0){
+        corridor.transform.localScale = new Vector3(-3.5f,3.5f, 3.5f);
+        }else{
+            corridor.transform.localScale = new Vector3(3.5f,3.5f, 3.5f);
+            Debug.Log("不反转");
+        }
         }else{
             Vector3 offset = new Vector3(backwardOffsetX, 0, backwardOffsetZ);
                 if(nowDirection != lastDirection){
                     offset = new Vector3(specialBackwardOffsetX, 0, backwardOffsetZ);
                 }
             corridor.transform.position = reference.transform.position + offset;
-            corridor.transform.localScale = new Vector3(-1, 1, 1);
+            if((nowDirection * lastDirection) < 0){
+            corridor.transform.localScale = new Vector3(3.5f, 3.5f, -3.5f);
+            }else{
+                corridor.transform.localScale = new Vector3(-3.5f, 3.5f, -3.5f);
+            }
         }
     }
 
@@ -415,7 +433,12 @@ public class CorridorStageManager : MonoBehaviour
         if (initialCorridor != currentCorridor && initialCorridor != previousCorridor && initialCorridor != lastpreviousCorridor){
                 initialCorridor.SetActive(false);
                }
-       // Debug.Log("C:"+currentCorridor.name + " P:"+previousCorridor.name+" L:" + lastpreviousCorridor.name);
+        if(currentCorridor!=null && previousCorridor!=null && lastpreviousCorridor!=null){
+        Debug.Log("C:"+currentCorridor.name + " P:"+previousCorridor.name+" L:" + lastpreviousCorridor.name);
+        }else if(lastpreviousCorridor == null){
+            Debug.Log("C:"+currentCorridor.name);
+            Debug.Log("L: null");
+        }
     }
 
     void ResetToFirstStage(int dir)
@@ -437,6 +460,11 @@ public class CorridorStageManager : MonoBehaviour
         if((nowDirection * lastDirection) < 0){
             predoor.isLocked = true;
         }
+        DoorInteraction prebackdoor = previousCorridor.transform.GetChild(3).gameObject.GetComponentInChildren<DoorInteraction>();
+        if((nowDirection * lastDirection) > 0){
+            prebackdoor.isLocked = true;
+        }
+        
         if(dir>0){
             if(lastpreviousCorridor == initialCorridor){
             initialDoorA.isLocked = true;

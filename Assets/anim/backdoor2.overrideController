@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: backdoor2
+  m_Controller: {fileID: 9100000, guid: 68adaa678a2367044be53d2789a2d342, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 3b1f3475204b8284dab951572b4b8b9e, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 92ef0039a0657bd418b2f454e58ec37f, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: d188f02f9aeba0d45b1ed6c1d0a69579, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: f6a0c7f53f6537f4cb484552680639cd, type: 2}

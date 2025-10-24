@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b52e59a553232a44280a51af500b0fe1
+guid: 691afb53e8d7274478874ac0a2eec13a
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
@@ -7,9 +7,9 @@ MonoImporter:
   - promptText: {instanceID: 0}
   - doorAnimator: {instanceID: 0}
   - linkedDoor: {instanceID: 0}
+  - audioSource: {instanceID: 0}
   - openSound: {fileID: 8300000, guid: 5266fc088ce56ba4c8800d56b43e1216, type: 3}
   - closeSound: {fileID: 8300000, guid: 2775ad50b1bc6cc45b9d7f09646113aa, type: 3}
-  - lockedSound: {fileID: 8300000, guid: 04edd80ed8417454aa3fcd5f4ffc7bbd, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
