@@ -8,16 +8,21 @@ public class DateAnormaly : MonoBehaviour
     public GameObject[] calendar;
     public GameObject anormalyCalendar;
 
+    [Header("状态设置")]
+    public int stageIndex;
+    public int anormalStage;
+
     private GameObject currentCalendar;
-    private int loopIndex;
+
     // Start is called before the first frame update
     void Start()
     {
+        stageIndex = CorridorStageManager.currentStage;
         foreach (GameObject model in calendar)
         {
             model.SetActive(false);
         }
-        calendar[loopIndex].SetActive(true);
+        calendar[stageIndex].SetActive(true);
     }
 
     // Update is called once per frame

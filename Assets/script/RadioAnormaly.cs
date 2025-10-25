@@ -13,9 +13,9 @@ public class RadioAnormaly : MonoBehaviour
     [Header("触发设置")]
     public float triggerRadius = 5f;
     public GameObject Player = null;
+    public int stageIndex;
+    public int anormalStage = 2;
 
-
-    public int loopIndex;
     private AudioSource audioSource;
     private bool isTurnOn = false;
     private Transform playerTransform;
@@ -23,6 +23,7 @@ public class RadioAnormaly : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        stageIndex = CorridorStageManager.currentStage;
         isTurnOn = false;
         audioSource = GetComponent<AudioSource>();
 //        audioSource.loop = true;
@@ -48,7 +49,7 @@ public class RadioAnormaly : MonoBehaviour
     void PlayGreeting()
     {
         isTurnOn = true;
-        if (loopIndex == 2)
+        if (stageIndex == anormalStage)
         {
             StartCoroutine(PlayNoonAudio());
         }
